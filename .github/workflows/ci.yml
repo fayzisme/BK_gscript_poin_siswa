@@ -1,0 +1,100 @@
+name: 🔍 CI — Lint & Pre-Deploy Check
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main, develop]
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: PHP Syntax Lint & Security Audit
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🐘 Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          coverage: none
+
+      - name: 🔍 Syntax lint semua file PHP
+        run: |
+          echo "Menjalankan php -l pada semua file PHP..."
+          ERROR=0
+          while IFS= read -r -d '' f; do
+            if ! RESULT=$(php -l "$f" 2>&1); then
+              echo "❌ $f"
+              echo "$RESULT"
+              ERROR=1
+            fi
+          done < <(find . -name '*.php' -not -path './vendor/*' -print0)
+
+          if [ "$ERROR" -eq 1 ]; then
+            echo ""
+            echo "🚫 Terdapat syntax error — deployment diblokir!"
+            exit 1
+          fi
+          echo "✅ Semua file PHP lolos syntax check"
+
+      - name: "Audit: pastikan .env & secret tidak ter-commit"
+        run: |
+          # Cek file sensitif yang seharusnya di-gitignore
+          LEAKED=""
+          for f in .env .env.local .env.production database/database.sqlite; do
+            if git ls-files --error-unmatch "$f" 2>/dev/null; then
+              LEAKED="$LEAKED\n  ❌ $f ter-commit!"
+            fi
+          done
+
+          if [ -n "$LEAKED" ]; then
+            echo -e "🚫 FATAL — file sensitif terdeteksi di repository:$LEAKED"
+            echo "Hapus segera dengan: git rm --cached <file> lalu commit ulang."
+            exit 1
+          fi
+          echo "✅ Tidak ada file sensitif yang ter-commit"
+
+      - name: "Audit: pastikan tidak ada dependensi vendor yang hilang"
+        run: |
+          # App ini pure PHP (zero composer dependency) — pastikan tidak ada
+          # require ke package eksternal yang tidak ada di repo
+          if grep -rn "require.*vendor/autoload" --include='*.php' app core public config 2>/dev/null; then
+            echo "⚠️  Ditemukan referensi ke vendor/autoload — pastikan composer install dijalankan"
+          else
+            echo "✅ Zero-dependency app — tidak butuh composer install"
+          fi
+
+      - name: 📦 Upload artifact untuk inspeksi (opsional)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lint-report
+          path: .
+          retention-days: 3
+
+      # ── Notifikasi ke Hermes (Discord) kalau CI GAGAL ──
+      # Hermes = agent DevOps di server (container 'hermes-gateway').
+      # 'hermes send' memakai kredensial Discord yang sudah dikonfigurasi.
+      - name: "📣 Notify Hermes jika CI gagal"
+        if: failure()
+        env:
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          COMMIT: ${{ github.sha }}
+          ACTOR: ${{ github.actor }}
+          REF: ${{ github.ref_name }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          SHORT_SHA="${COMMIT:0:7}"
+          SUBJECT="[🚫 CI GAGAL] Lint check — BK Poin & SP"
+          BODY="[CI GAGAL] PHP lint/security check tidak lolos. Branch: $REF | Commit: $SHORT_SHA | Oleh: @$ACTOR | Run: https://github.com/${{ github.repository }}/actions/runs/$RUN_ID"
+          echo "📨 Mengirim alert ke Hermes (Discord #vps-ops)..."
+          ssh -i ~/.ssh/deploy_key "$VPS_USER@$VPS_HOST" \
+            "docker exec hermes-gateway hermes send --to 'discord:#vps-ops' --subject '$SUBJECT' '$BODY'" \
+            && echo "✅ Alert terkirim" || echo "⚠️  Pengiriman gagal (non-fatal)"

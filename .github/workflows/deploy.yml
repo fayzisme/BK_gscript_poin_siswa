@@ -1,0 +1,267 @@
+name: 🚀 CD — Deploy ke VPS (Beta/Dev Server)
+
+# ─────────────────────────────────────────────────────────────────────
+# Pipeline deploy ke VPS dengan HEALTH CHECK + AUTO-ROLLBACK.
+#
+# Alur: push → lint → sync rsync → cek /health → (gagal? rollback otomatis)
+# ─────────────────────────────────────────────────────────────────────
+on:
+  push:
+    branches: [main, develop]
+  workflow_dispatch:
+    inputs:
+      should_seed:
+        description: 'Jalankan database seed? (hanya saat setup pertama!)'
+        required: false
+        default: 'no'
+        type: choice
+        options: ['no', 'yes']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false   # jangan cancel deploy yang sedang jalan
+
+jobs:
+  deploy:
+    name: Deploy + Health Check + Rollback
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🐘 Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          coverage: none
+
+      - name: 🛡️ Final gate — tolak deploy kalau ada syntax error
+        run: |
+          ERROR=0
+          while IFS= read -r -d '' f; do
+            php -l "$f" > /dev/null 2>&1 || { echo "❌ Syntax error: $f"; ERROR=1; }
+          done < <(find . -name '*.php' -not -path './vendor/*' -print0)
+          if [ "$ERROR" -eq 1 ]; then echo "🚫 Deploy diblokir karena syntax error"; exit 1; fi
+          echo "✅ Final syntax check OK"
+
+      - name: 🔐 Setup SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.VPS_SSH_PRIVATE_KEY }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "$VPS_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          chmod 644 ~/.ssh/known_hosts
+
+      # ── Tentukan path tujuan per branch ──────────────────────────────
+      # main     → /var/www/bk-poin-sp      (production)
+      # develop  → /var/www/bk-poin-sp-beta (beta tester)
+      - name: 🎯 Resolve target path by branch
+        id: target
+        run: |
+          if [ "$GITHUB_REF" = "refs/heads/main" ]; then
+            echo "path=/var/www/bk-poin-sp" >> "$GITHUB_OUTPUT"
+            echo "label=PRODUCTION" >> "$GITHUB_OUTPUT"
+          else
+            echo "path=/var/www/bk-poin-sp-beta" >> "$GITHUB_OUTPUT"
+            echo "label=BETA" >> "$GITHUB_OUTPUT"
+          fi
+
+      # ── 1) Backup versi lama dulu (untuk rollback) ──────────────────
+      - name: 💾 Backup current release (pre-deploy)
+        env:
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          DEPLOY_PATH: ${{ steps.target.outputs.path }}
+        run: |
+          ssh -i ~/.ssh/deploy_key "$VPS_USER@$VPS_HOST" bash -s "$DEPLOY_PATH" << 'EOF'
+            set -euo pipefail
+            DEPLOY_PATH="$1"
+            if [ -d "$DEPLOY_PATH/.env" ] || [ -f "$DEPLOY_PATH/.env" ]; then
+              # Simpan snapshot kode lama (tanpa .env, tanpa log) — untuk rollback
+              if [ -d "$DEPLOY_PATH/app" ]; then
+                sudo -n true 2>/dev/null && SUDO="sudo" || SUDO=""
+                $SUDO rm -rf "${DEPLOY_PATH}.prev"
+                $SUDO cp -a "$DEPLOY_PATH" "${DEPLOY_PATH}.prev"
+                $SUDO rm -rf "${DEPLOY_PATH}.prev/.env" "${DEPLOY_PATH}.prev/storage/logs"
+                echo "💾 Backup lama disimpan di ${DEPLOY_PATH}.prev"
+              else
+                echo "ℹ️  Belum ada release lama — skip backup (first deploy)"
+              fi
+            else
+              echo "ℹ️  Deploy pertama kali — skip backup"
+            fi
+          EOF
+
+      # ── 2) Sync kode baru ─────────────────────────────────────────────
+      - name: 📤 Sync kode via rsync
+        env:
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          DEPLOY_PATH: ${{ steps.target.outputs.path }}
+        run: |
+          echo "🚚 [$${{ steps.target.outputs.label }}] Sync ke $VPS_HOST:$DEPLOY_PATH ..."
+          rsync -azP --delete \
+            --exclude='.git/' \
+            --exclude='.github/' \
+            --exclude='.env' \
+            --exclude='.env.*' \
+            --exclude='.deploy.env' \
+            --exclude='storage/logs/' \
+            --exclude='database/*.sqlite' \
+            --exclude='database/*.sqlite-*' \
+            --exclude='/node_modules/' \
+            --exclude='/vendor/' \
+            --exclude='.DS_Store' \
+            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes" \
+            ./ "$VPS_USER@$VPS_HOST:$DEPLOY_PATH/"
+          echo "✅ Sync selesai"
+
+      # ── 3) Post-deploy: permission, cek DB, seed opsional ────────────
+      - name: ⚙️ Post-deploy server-side
+        env:
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          DEPLOY_PATH: ${{ steps.target.outputs.path }}
+          SHOULD_SEED: ${{ github.event.inputs.should_seed || 'no' }}
+        run: |
+          ssh -i ~/.ssh/deploy_key "$VPS_USER@$VPS_HOST" bash -s "$DEPLOY_PATH" "$SHOULD_SEED" << 'EOF'
+            set -euo pipefail
+            DEPLOY_PATH="$1"
+            RUN_SEED="$2"
+            cd "$DEPLOY_PATH"
+
+            echo "📁 Set permission storage..."
+            mkdir -p storage/logs
+            chmod -R 775 storage
+            chown -R www-data:www-data storage 2>/dev/null || true
+
+            if [ ! -f .env ]; then
+              echo "⚠️  .env TIDAK ADA di server — deploy akan gagal health check!"
+              echo "    Buat sekarang: cp .env.example .env && nano .env"
+              exit 1
+            fi
+
+            if [ "$RUN_SEED" = "yes" ]; then
+              echo "🌱 Seeding database (first-time setup)..."
+              php database/seed.php
+            fi
+
+            echo "✅ Post-deploy selesai"
+          EOF
+
+      # ── 4) HEALTH CHECK — verifikasi app benar-benar hidup ───────────
+      - name: 🩺 Health check via /health endpoint
+        id: health
+        env:
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          DEPLOY_PATH: ${{ steps.target.outputs.path }}
+        run: |
+          # Ambil URL dari APP_URL di .env server, atau fallback ke host
+          APP_URL=$(ssh -i ~/.ssh/deploy_key "$VPS_USER@$VPS_HOST" \
+            "grep -E '^APP_URL=' '$DEPLOY_PATH/.env' 2>/dev/null | head -1 | cut -d= -f2- | tr -d '\"'" || true)
+          APP_URL="${APP_URL:-http://$VPS_HOST}"
+          HEALTH_URL="${APP_URL%/}/health"
+          echo "🩺 Mengecek: $HEALTH_URL"
+
+          # Retry beberapa kali supaya server punya waktu reload
+          MAX_TRIES=5
+          for i in $(seq 1 $MAX_TRIES); do
+            echo "  → attempt $i/$MAX_TRIES"
+            CODE=$(curl -s -o /tmp/health.json -w '%{http_code}' --max-time 15 "$HEALTH_URL" || true)
+            BODY=$(cat /tmp/health.json 2>/dev/null || echo '')
+            echo "  HTTP $CODE"
+            echo "$BODY" | head -20
+
+            if [ "$CODE" = "200" ]; then
+              echo "✅ HEALTHY (HTTP 200)"
+              echo "healthy=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            sleep 5
+          done
+
+          echo "🚫 UNHEALTHY — app tidak merespon 200 setelah $MAX_TRIES percobaan"
+          echo "healthy=false" >> "$GITHUB_OUTPUT"
+
+      # ── 5) AUTO-ROLLBACK kalau health check gagal ─────────────────────
+      - name: 🔙 Auto-rollback jika unhealthy
+        id: rollback
+        if: steps.health.outputs.healthy != 'true'
+        env:
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          DEPLOY_PATH: ${{ steps.target.outputs.path }}
+        run: |
+          echo "🚨 Health check GAGAL — rollback ke versi sebelumnya..."
+          ssh -i ~/.ssh/deploy_key "$VPS_USER@$VPS_HOST" bash -s "$DEPLOY_PATH" << 'EOF'
+            set -euo pipefail
+            DEPLOY_PATH="$1"
+            if [ -d "${DEPLOY_PATH}.prev/app" ]; then
+              # Restore .env & storage/logs ke backup dulu
+              cp -a "$DEPLOY_PATH/.env" "${DEPLOY_PATH}.prev/.env" 2>/dev/null || true
+              cp -a "$DEPLOY_PATH/storage/logs" "${DEPLOY_PATH}.prev/storage/logs" 2>/dev/null || true
+              rm -rf "${DEPLOY_PATH}.broken"
+              mv "$DEPLOY_PATH" "${DEPLOY_PATH}.broken"
+              mv "${DEPLOY_PATH}.prev" "$DEPLOY_PATH"
+              chown -R www-data:www-data "$DEPLOY_PATH" 2>/dev/null || true
+              echo "✅ Rollback selesai — versi lama dipulihkan"
+            else
+              echo "⚠️  Tidak ada backup untuk rollback — kode baru tetap di server (investigasi manual!)"
+            fi
+          EOF
+          exit 1
+
+      # ── 6) NOTIFIKASI via Hermes (agent DevOps di server) ─────────────
+      # Hermes jalan di container docker 'hermes-gateway' di server yang
+      # sama. Command 'hermes send' memakai kredensial Discord yang sudah
+      # dikonfigurasi di ~/.hermes — tanpa butuh LLM/token tambahan.
+      - name: 📣 Notify Hermes → Discord
+        if: always()
+        env:
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          ENV_LABEL: ${{ steps.target.outputs.label }}
+          DEPLOY_PATH: ${{ steps.target.outputs.path }}
+          HEALTHY: ${{ steps.health.outputs.healthy }}
+          ROLLED_BACK: ${{ steps.rollback.outcome }}
+          COMMIT: ${{ github.sha }}
+          ACTOR: ${{ github.actor }}
+          REF: ${{ github.ref_name }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          # Tentukan status & emoji
+          if [ "$HEALTHY" = "true" ] && [ "$ROLLED_BACK" != "failure" ]; then
+            STATUS="✅ BERHASIL"; COLOR="good"
+          elif [ "$ROLLED_BACK" = "failure" ]; then
+            STATUS="🔙 ROLLBACK"; COLOR="warning"
+          else
+            STATUS="🚫 GAGAL"; COLOR="danger"
+          fi
+
+          SHORT_SHA="${COMMIT:0:7}"
+          SUBJECT="[$STATUS] Deploy $ENV_LABEL — BK Poin & SP"
+
+          # Body pesan
+          MSG_TEXT="Deploy $ENV_LABEL: STATUS=$STATUS | Branch=$REF | Commit=$SHORT_SHA | User=@$ACTOR | Target=$DEPLOY_PATH @ $VPS_HOST | Health=${HEALTHY:-unknown} | Run=https://github.com/${{ github.repository }}/actions/runs/$RUN_ID"
+
+          # Kirim via Hermes di server (docker exec — user VPS harus ada di grup docker)
+          echo "📨 Mengirim notifikasi ke Hermes (Discord #vps-ops)..."
+          ssh -i ~/.ssh/deploy_key "$VPS_USER@$VPS_HOST" \
+            "docker exec hermes-gateway hermes send --to 'discord:#vps-ops' --subject '$SUBJECT' '$MSG_TEXT'" \
+            && echo "✅ Notifikasi terkirim" || echo "⚠️  Notifikasi gagal (non-fatal — deploy tetap $STATUS)"
+
+      - name: 🎉 Selesai
+        run: |
+          echo "============================================"
+          echo "  🎉 DEPLOY $${{ steps.target.outputs.label }} BERHASIL + HEALTHY"
+          echo "  Target: ${{ secrets.VPS_HOST }}:${{ steps.target.outputs.path }}"
+          echo "  Notifikasi Discord: terkirim via Hermes"
+          echo "============================================"

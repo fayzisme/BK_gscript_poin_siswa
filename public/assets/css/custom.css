@@ -1,0 +1,581 @@
+/* ═══════════════════════════════════════════════════
+   BK & SP — Spark Admin Inspired Design
+   ═══════════════════════════════════════════════════ */
+
+:root {
+    --sp-sidebar-w: 250px;
+    --sp-sidebar-w-collapsed: 76px;  /* lebar rail saat di-minimize (desktop) */
+    --sp-sidebar-bg: #0b3d2e;         /* hijau gelap (ubah sesuai branding sekolah) */
+    --sp-sidebar-hover: #115c45;
+    --sp-primary: #059669;
+    --sp-page-bg: #f4f6fb;
+    --sp-navbar-h: 60px;
+    --sp-radius: 14px;
+}
+
+* { -webkit-tap-highlight-color: transparent; }
+
+body {
+    background: var(--sp-page-bg);
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+}
+
+/* ── App Shell ─────────────────────────────────── */
+.app-shell { display: flex; min-height: 100vh; }
+.app-main {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    margin-left: var(--sp-sidebar-w);
+    transition: margin-left .25s ease;
+}
+body.sidebar-collapsed .app-main { margin-left: var(--sp-sidebar-w-collapsed); }
+
+/* ── Sidebar ───────────────────────────────────── */
+.app-sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    width: var(--sp-sidebar-w);
+    background: var(--sp-sidebar-bg);
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    z-index: 1040;
+    transition: width .25s ease;
+    overflow-x: hidden;        /* penting: mencegah teks meluas saat collapse */
+    overflow-y: auto;
+}
+
+/* ═══ MINIMIZE SIDEBAR (DESKTOP) ════════════════
+   body.sidebar-collapsed → sidebar menyempit jadi rail ikon 76px,
+   teks menu disembunyikan, ikon tetap terlihat & terpusat.
+   ═════════════════════════════════════════════ */
+body.sidebar-collapsed .app-sidebar { width: var(--sp-sidebar-w-collapsed); }
+
+/* Brand: sembunyikan teks, pusatkan logo */
+body.sidebar-collapsed .sidebar-brand { justify-content: center; padding: 18px 0; }
+body.sidebar-collapsed .sidebar-brand > div:last-child { display: none; }
+
+/* Menu item: sembunyikan label & badge, pusatkan ikon */
+body.sidebar-collapsed .sidebar-nav { padding: 12px 10px; }
+body.sidebar-collapsed .sidebar-nav .nav-link {
+    justify-content: center;
+    padding: 14px 0;
+    gap: 0;
+}
+body.sidebar-collapsed .sidebar-nav .nav-link i { width: auto; font-size: 20px; }
+body.sidebar-collapsed .sidebar-nav .nav-link span,
+body.sidebar-collapsed .sidebar-nav .nav-link .badge-count { display: none; }
+/* Section heading tidak relevan di mode ikon */
+body.sidebar-collapsed .sidebar-nav .nav-section { display: none; }
+
+/* Footer: sembunyikan info user, tampilkan ikon saja */
+body.sidebar-collapsed .sidebar-footer .d-flex { justify-content: center; }
+body.sidebar-collapsed .sidebar-footer .lh-1 { display: none; }
+
+/* Tooltip judul menu saat collapsed (bawaan browser, aksesibel) */
+.sidebar-nav .nav-link { position: relative; }
+
+/* Hover di mode rail: menu tetap lebar penuh & judul mengambang (flyout) */
+body.sidebar-collapsed .sidebar-nav .nav-link:hover {
+    background: var(--sp-sidebar-hover);
+}
+body.sidebar-collapsed .sidebar-nav .nav-link::after {
+    content: attr(data-title);
+    position: absolute;
+    left: 100%;
+    top: 50%;
+    transform: translateY(-50%);
+    margin-left: 10px;
+    padding: 6px 10px;
+    background: #111827;
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: 6px;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 1050;
+    box-shadow: 0 6px 18px rgba(0,0,0,.3);
+}
+body.sidebar-collapsed .sidebar-nav .nav-link:hover::after { opacity: 1; }
+.sidebar-brand {
+    display: flex; align-items: center; gap: 12px;
+    padding: 18px 20px;
+    border-bottom: 1px solid rgba(255,255,255,.08);
+}
+.brand-logo {
+    width: 42px; height: 42px; border-radius: 12px;
+    background: var(--sp-primary);
+    color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; flex-shrink: 0;
+}
+.brand-title { font-weight: 800; font-size: 16px; line-height: 1.1; letter-spacing: 1px; }
+.brand-sub { font-size: 11px; color: rgba(255,255,255,.55); letter-spacing: 2px; }
+
+.sidebar-nav { list-style: none; padding: 12px 12px; margin: 0; flex: 1; }
+.sidebar-nav .nav-section {
+    font-size: 12px; text-transform: uppercase; letter-spacing: 1.5px;
+    color: rgba(255,255,255,.45); padding: 16px 12px 8px; font-weight: 700;
+}
+.sidebar-nav .nav-link {
+    display: flex; align-items: center; gap: 12px;
+    color: rgba(255,255,255,.85);
+    text-decoration: none;
+    padding: 14px 12px;
+    border-radius: 10px;
+    font-size: 16px;
+    font-weight: 500;
+    transition: all .15s ease;
+    margin-bottom: 3px;
+    min-height: 48px;              /* target sentuh nyaman (WCAG 2.2 ≥44px) */
+}
+.sidebar-nav .nav-link i { font-size: 19px; width: 22px; text-align: center; }
+.sidebar-nav .nav-link:hover { background: var(--sp-sidebar-hover); color: #fff; }
+.sidebar-nav .nav-link.active {
+    background: var(--sp-primary); color: #fff; font-weight: 700;
+    box-shadow: 0 4px 12px rgba(5,150,105,.35);
+}
+.badge-count { font-size: 12px; padding: 0.25em 0.5em; }
+
+.sidebar-footer {
+    padding: 14px 16px;
+    border-top: 1px solid rgba(255,255,255,.08);
+    background: rgba(0,0,0,.15);
+}
+.sidebar-footer .fw-semibold { font-size: 15px !important; }
+.sidebar-footer .text-white-50 { font-size: 13px !important; }
+
+.sidebar-backdrop { display: none; }
+
+/* ── Navbar ────────────────────────────────────── */
+.app-navbar {
+    height: var(--sp-navbar-h);
+    background: #fff;
+    border-bottom: 1px solid #e8eaf0;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 20px;
+    position: sticky; top: 0; z-index: 1030;
+    box-shadow: 0 1px 3px rgba(0,0,0,.04);
+}
+.breadcrumb-line { font-size: 11px; color: #9aa1b2; }
+.btn-icon {
+    width: 40px; height: 40px; border-radius: 10px;
+    display: inline-flex; align-items: center; justify-content: center;
+    border: 1px solid #e8eaf0; background: #fff; color: #334155;
+    position: relative;
+    padding: 0 !important;
+    font-size: 0; /* Cegah offset akibat whitespace text node */
+}
+.btn-icon > i {
+    font-size: 1.1rem;
+    line-height: 1;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 1;
+}
+
+/* Sembunyikan tanda panah dropdown (caret) pada button icon */
+.btn-icon.dropdown-toggle::after {
+    display: none !important;
+}
+
+/* Badge notifikasi bel di navbar — rapi di sudut atas kanan tombol tanpa menutupi lonceng */
+.btn-icon .notif-badge {
+    position: absolute !important;
+    top: 0 !important;
+    right: 0 !important;
+    transform: translate(45%, -45%) !important;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1;
+    padding: 0 4px;
+    min-width: 17px;
+    height: 17px;
+    border-radius: 99px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 0 2px #fff;
+    pointer-events: none;
+    z-index: 2;
+}
+.search-box {
+    background: #f1f5f9; border-radius: 10px; padding: 0 12px; align-items: center;
+}
+.search-box i { color: #94a3b8; font-size: 14px; }
+.search-box .form-control {
+    border: none; background: transparent; box-shadow: none;
+    width: 240px; font-size: 13px;
+}
+
+/* ── Content ───────────────────────────────────── */
+.app-content { padding: 20px; flex: 1; }
+.app-footer {
+    padding: 14px 20px;
+    border-top: 1px solid #e8eaf0;
+    background: #fff;
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 12px; color: #64748b;
+}
+
+/* ── Cards & Stats ─────────────────────────────── */
+.card {
+    border: none;
+    border-radius: var(--sp-radius);
+    box-shadow: 0 1px 2px rgba(16,24,40,.04), 0 4px 16px rgba(16,24,40,.04);
+}
+.card-header {
+    background: #fff; border-bottom: 1px solid #f1f5f9;
+    font-weight: 700; font-size: 13.5px; color: #334155;
+    border-radius: var(--sp-radius) var(--sp-radius) 0 0 !important;
+    padding: 14px 18px;
+}
+.card-body { padding: 18px; }
+
+.stat-card {
+    display: flex; align-items: center; gap: 16px;
+    padding: 18px;
+    transition: transform .15s ease, box-shadow .15s ease;
+}
+.stat-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(16,24,40,.08); }
+.stat-icon {
+    width: 52px; height: 52px; border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; flex-shrink: 0;
+}
+.stat-value { font-size: 26px; font-weight: 800; color: #0f172a; line-height: 1.1; }
+.stat-label { font-size: 12.5px; color: #64748b; font-weight: 600; }
+.stat-trend { font-size: 11px; color: #94a3b8; }
+
+.avatar {
+    width: 40px; height: 40px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 15px; flex-shrink: 0;
+}
+.avatar-sm { width: 32px; height: 32px; font-size: 13px; }
+
+/* ── Login Page ────────────────────────────────── */
+.login-page {
+    position: relative;
+    background:
+        radial-gradient(1000px 600px at 12% -8%, rgba(110,231,183,.28), transparent 60%),
+        radial-gradient(900px 500px at 100% 100%, rgba(13,148,136,.38), transparent 55%),
+        linear-gradient(135deg, #0b3d2e 0%, #065f46 50%, #047857 100%);
+    min-height: 100vh;
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+    overflow: hidden;
+}
+.login-page::before {
+    content: "";
+    position: absolute; inset: 0;
+    background-image:
+        linear-gradient(rgba(255,255,255,.045) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255,255,255,.045) 1px, transparent 1px);
+    background-size: 44px 44px;
+    -webkit-mask-image: radial-gradient(1200px 700px at 50% 30%, #000 40%, transparent 85%);
+    mask-image: radial-gradient(1200px 700px at 50% 30%, #000 40%, transparent 85%);
+    pointer-events: none;
+}
+.login-wrapper { width: 100%; max-width: 960px; position: relative; z-index: 1; }
+
+.login-card {
+    border-radius: 22px;
+    box-shadow: 0 30px 70px -20px rgba(0,0,0,.55), 0 8px 24px -12px rgba(0,0,0,.4);
+    animation: card-in .5s cubic-bezier(.2,.8,.25,1);
+}
+@keyframes card-in { from { opacity: 0; transform: translateY(16px) scale(.985); } }
+@media (prefers-reduced-motion: reduce) { .login-card { animation: none; } }
+
+.login-brand-panel {
+    background: linear-gradient(160deg, #0b3d2e, #065f46);
+    display: flex; align-items: center;
+    position: relative;
+}
+.login-brand-panel::after {
+    content: "";
+    position: absolute; right: -70px; bottom: -70px; width: 220px; height: 220px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(110,231,183,.22), transparent 70%);
+}
+.login-points i { color: #6ee7b7; }
+.login-points span { font-size: 13.5px; opacity: .9; }
+.login-brand-foot {
+    position: relative; z-index: 1;
+    margin-top: 28px; padding-top: 16px;
+    font-size: 11.5px; opacity: .6;
+    border-top: 1px solid rgba(255,255,255,.14);
+}
+
+.login-form-panel { padding: 2rem 2.25rem; }
+@media (min-width: 1200px) { .login-form-panel { padding: 2.75rem 3rem; } }
+
+/* Panel branding & form harus setinggi papan di desktop */
+.login-card .row { min-height: 560px; }
+.login-form-col { display: flex; flex-direction: column; }
+.login-brand-panel { min-height: 100%; }
+
+/* Input feedback: ikon & border berubah saat fokus */
+.login-form-panel .input-group-text {
+    transition: color .15s, background-color .15s, border-color .15s;
+}
+.login-form-panel .form-control:focus { box-shadow: none; }
+.login-form-panel .input-group:focus-within {
+    box-shadow: 0 0 0 .2rem rgba(5,150,105,.18);
+    border-radius: .375rem;
+}
+.login-form-panel .input-group:focus-within .input-group-text {
+    color: var(--sp-primary); border-color: var(--sp-primary); background-color: #ecfdf5;
+}
+#togglePassword { border-color: #dee2e6; }
+#togglePassword:hover { color: var(--sp-primary); }
+
+/* Tombol masuk: micro-interaction */
+#btnLogin {
+    transition: transform .12s ease, box-shadow .15s ease, filter .15s ease;
+    box-shadow: 0 6px 18px -6px rgba(5,150,105,.6);
+    display: flex; align-items: center; justify-content: center;
+}
+#btnLogin:not(:disabled):hover { transform: translateY(-1px); filter: brightness(1.05); }
+#btnLogin:not(:disabled):active { transform: translateY(0); }
+#btnLogin:disabled { cursor: progress; opacity: .85; }
+
+/* Spinner: tersembunyi di awal, muncul saat submit */
+.btn-login-spinner { display: none; margin-left: 6px; }
+#btnLogin.is-loading .btn-login-label { display: none; }
+#btnLogin.is-loading .btn-login-spinner { display: inline-block; }
+
+/* Alert error: animasi shake halus */
+.animate-shake { animation: shake .36s cubic-bezier(.36,.07,.19,.97); }
+@keyframes shake {
+    10%, 90% { transform: translateX(-1px); }
+    20%, 80% { transform: translateX(2px); }
+    30%, 50%, 70% { transform: translateX(-3px); }
+    40%, 60% { transform: translateX(3px); }
+}
+@media (prefers-reduced-motion: reduce) { .animate-shake { animation: none; } }
+
+/* Checkbox "Ingat saya" */
+.login-form-panel .form-check-input:checked {
+    background-color: var(--sp-primary); border-color: var(--sp-primary);
+}
+.login-form-panel .form-check-input:focus { box-shadow: 0 0 0 .2rem rgba(5,150,105,.2); border-color: var(--sp-primary); }
+
+/* ── Tables ────────────────────────────────────── */
+.table thead th { font-size: 11.5px; text-transform: uppercase; letter-spacing: .4px; color: #64748b; }
+.table tbody { font-size: 13.5px; }
+.table-hover tbody tr:hover { background-color: #f8fafc; }
+
+/* ── Print SP ──────────────────────────────────── */
+@media print {
+    .screen-bar { display: none !important; }
+}
+
+/* ── Responsive ────────────────────────────────── */
+@media (max-width: 991.98px) {
+    .app-sidebar { transform: translateX(-100%); }
+    body.sidebar-open .app-sidebar { transform: translateX(0); }
+    /* Di mobile, abaikan state collapsed dari desktop — sidebar full-width
+       saat di-slide-in, agar menu tetap utuh terbaca. */
+    body.sidebar-collapsed .app-sidebar { width: var(--sp-sidebar-w); }
+    body.sidebar-collapsed .sidebar-nav .nav-link span,
+    body.sidebar-collapsed .sidebar-nav .nav-link .badge-count { display: revert; }
+    .app-main { margin-left: 0; }
+    .sidebar-backdrop {
+        display: block; position: fixed; inset: 0; background: rgba(15,23,42,.5);
+        z-index: 1035; opacity: 0; visibility: hidden; transition: all .25s;
+    }
+    body.sidebar-open .sidebar-backdrop { opacity: 1; visibility: visible; }
+    .search-box { display: none; }
+    .app-footer { flex-direction: column; gap: 4px; text-align: center; }
+}
+
+/* ── Utils ─────────────────────────────────────── */
+.text-muted-50 { color: rgba(255,255,255,.5); }
+.form-label { font-size: 12.5px; margin-bottom: 5px; }
+.form-control:focus, .form-select:focus { border-color: var(--sp-primary); box-shadow: 0 0 0 .2rem rgba(5,150,105,.15); }
+
+/* ── Aksesibilitas: focus ring jelas untuk navigasi keyboard ── */
+:focus-visible {
+    outline: 3px solid rgba(110,231,183,.9);
+    outline-offset: 2px;
+    border-radius: 4px;
+}
+/* Di latar gelap (sidebar/login) ring harus kontras */
+.app-sidebar :focus-visible, .login-brand-panel :focus-visible { outline-color: #fff; }
+
+/* ════════════════════════════════════════════════════════════════════
+   HALAMAN INPUT PELANGGARAN & PRESTASI — SKALA KETIKA (SENIOR-FRIENDLY)
+   Generasi Boomer: font besar, baris tinggi, target sentuh lebar,
+   kontras tinggi. Mengikuti panduan WCAG 2.2 (teks ≥16px efektif,
+   target sentuh ≥44px).
+   ════════════════════════════════════════════════════════════════════ */
+
+/* 1) LABEL FORM — besar & tegas ------------------------------------ */
+#formPelanggaran .form-label {
+    font-size: 1.06rem;          /* ≈17px — jelas dibaca tanpa kacamata baca */
+    font-weight: 700;
+    color: #1f2937;             /* kontras tinggi, bukan abu-abu */
+    margin-bottom: 6px;
+}
+#formPelanggaran .form-label .text-danger { font-size: 1.15rem; vertical-align: -1px; }
+
+/* 2) INPUT / SELECT / TEXTAREA — tinggi & lega --------------------- */
+#formPelanggaran .form-control,
+#formPelanggaran .form-select,
+#formPelanggaran textarea {
+    font-size: 1.06rem;          /* ≈17px */
+    padding: 0.7rem 0.85rem;     /* baris lebih tinggi dari default BS */
+    min-height: 52px;            /* target sentuh nyaman untuk jari tebal */
+    border-width: 1.5px;
+    border-color: #94a3b8;
+    color: #111827;
+}
+#formPelanggaran textarea { min-height: 64px; }
+#formPelanggaran .form-select {
+    background-position: right 0.85rem center;
+    background-size: 1.1rem 1.1rem;
+    padding-right: 2.6rem;
+}
+/* Placeholder harus terbaca (kontras ≥4.5:1) */
+#formPelanggaran .form-control::placeholder { color: #64748b; opacity: 1; }
+/* Text penghitung karakter */
+#formPelanggaran .form-text { font-size: 0.95rem; color: #4b5563; }
+
+/* 3) FILTER & SEARCH HEADER ---------------------------------------- */
+.pelanggaran-filter-head { padding: 0.65rem !important; }
+.pelanggaran-filter-head .btn { font-size: 1rem; font-weight: 600; padding: 0.55rem 0.75rem; }
+.pelanggaran-filter-head .form-select { font-size: 1rem; min-height: 48px; }
+#formPelanggaran #cariPelanggaran {
+    font-size: 1.06rem;
+    min-height: 52px;
+    padding-left: 2.4rem;        /* ruang untuk ikon 🔍 */
+    border-width: 1.5px;
+}
+
+/* 4) LIST ITEM SELEKTOR — besar & mudah disentuh ------------------- */
+#formPelanggaran .pelanggaran-item { padding: 0.85rem 1rem !important; }
+#formPelanggaran .item-icon { width: 44px !important; height: 44px !important; }
+#formPelanggaran .item-icon i { font-size: 1.35rem !important; }
+#formPelanggaran .item-title { font-size: 1.06rem !important; line-height: 1.35; }
+#formPelanggaran .item-meta { font-size: 0.95rem !important; margin-top: 3px; }
+#formPelanggaran .item-meta .badge { font-size: 0.85rem; padding: 0.25em 0.5em; }
+#formPelanggaran .item-poin {
+    font-size: 1rem !important;
+    padding: 0.4em 0.65em !important;
+    border-radius: 0.5rem;
+}
+#formPelanggaran .select-check-icon { font-size: 1.5rem !important; }
+/* Status terpilih — jelas terlihat (JS menambahkan class .selected) */
+#formPelanggaran .pelanggaran-item.selected {
+    background-color: #ecfdf5 !important;
+    border-left: 4px solid #059669;
+}
+#formPelanggaran .pelanggaran-item:hover { background-color: #f1f5f9; }
+/* Override bg-success-subtle dari JS agar hijau lembut konsisten */
+#formPelanggaran .pelanggaran-item.selected.bg-success-subtle { background-color: #ecfdf5 !important; }
+
+/* 5) PREVIEW & TOMBOL SIMPAN --------------------------------------- */
+#previewPoin { font-size: 1rem; padding: 0.85rem 1rem; }
+#previewPoin .text-muted { font-size: 0.95rem; }
+#previewPoin #previewKategori { font-size: 1rem; }
+.btn-lg-pelanggaran {
+    font-size: 1.1rem;
+    font-weight: 700;
+    padding: 0.85rem 1rem;
+    min-height: 56px;
+    letter-spacing: 0.2px;
+}
+
+/* 6) KARTU INFO SAMPING (Alur SP & Tips) --------------------------- */
+.alur-sp-list li span { font-size: 1.02rem; }
+.alur-sp-list .badge { font-size: 0.95rem; padding: 0.35em 0.6em; }
+.alur-sp-note { font-size: 0.98rem !important; line-height: 1.5; }
+.tips-input-list, .tips-input-list li { font-size: 1.02rem !important; line-height: 1.55; }
+.tips-input-list li { margin-bottom: 0.45rem; }
+
+/* 7) RESPONIF: layar kecil tetap besar ----------------------------- */
+@media (max-width: 575.98px) {
+    #formPelanggaran .form-label,
+    #formPelanggaran .form-control,
+    #formPelanggaran .form-select,
+    #formPelanggaran #cariPelanggaran { font-size: 1rem; }
+    #formPelanggaran .item-title { font-size: 1rem !important; }
+    .btn-lg-pelanggaran { font-size: 1.05rem; }
+    /* Layar sempit: form penuh, info card di bawah */
+    #formPelanggaran .col-md-6 { flex: 0 0 100%; max-width: 100%; }
+}
+
+/* 8) MENGHORMATI PREFERENSI USER ------------------------------------ */
+/* Jika pengguna memilih text lebih kecil di browser/OS, jangan paksa */
+@media (max-width: 575.98px) and (max-resolution: 1.5dppx) {
+    #formPelanggaran .form-control { min-height: 48px; }
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   NAVBAR / APP CHROME — KETIKA UNTUK SEMUA HALAMAN
+   Avatar, nama user, notifikasi & search box juga diperbesar agar
+   konsisten dengan halaman input.
+   ════════════════════════════════════════════════════════════════════ */
+.navbar-user div:first-child { font-size: 1.02rem; }     /* nama user */
+.navbar-user div:last-child { font-size: 0.92rem; }      /* role */
+.navbar-user-menu .dropdown-item,
+.navbar-user-menu .dropdown-item-text { font-size: 1rem; }
+.navbar-user-menu .dropdown-item { padding: 0.6rem 1rem; }
+.navbar-notif-menu .dropdown-header { font-size: 1.02rem; }
+.navbar-notif-empty { font-size: 0.98rem; padding: 0.5rem 1rem; display: block; }
+.navbar-notif-item { font-size: 1rem; padding: 0.6rem 1rem; line-height: 1.4; }
+.navbar-search-input {
+    font-size: 1rem;
+    min-height: 44px;
+    border-width: 1.5px;
+}
+.btn-icon { width: 44px; height: 44px; }                  /* target sentuh ≥44px */
+.avatar { width: 38px; height: 38px; font-size: 1.05rem; }
+
+/* ── SweetAlert2: dialog konfirmasi & notifikasi (banyak dipakai) ── */
+.swal2-popup {
+    font-size: 1.06rem !important;
+    border-radius: 1rem !important;
+}
+.swal2-title { font-size: 1.35rem !important; }
+.swal2-html-container { font-size: 1.06rem !important; line-height: 1.5 !important; }
+.swal2-confirm, .swal2-cancel {
+    font-size: 1.05rem !important;
+    font-weight: 600 !important;
+    padding: 0.65em 1.6em !important;
+    border-radius: 0.5rem !important;
+    min-height: 48px !important;
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   HALAMAN KATALOG MASTER — SKALA KETIKA (SENIOR-FRIENDLY)
+   ════════════════════════════════════════════════════════════════════ */
+.master-count { font-size: 1.02rem; }
+.btn-master-restore { font-size: 1rem; font-weight: 600; padding: 0.55rem 1rem; min-height: 48px; }
+
+.master-filter .form-select,
+.master-filter .form-control { font-size: 1.06rem; min-height: 52px; border-width: 1.5px; }
+.master-filter .input-group-text { font-size: 1.06rem; min-height: 52px; border-width: 1.5px; }
+.master-filter .btn { font-size: 1.02rem; font-weight: 600; min-height: 52px; }
+
+/* Tabel katalog: baris tinggi & font besar */
+.master-table { font-size: 1.02rem; }
+.master-table thead th { font-size: 1rem; font-weight: 700; white-space: nowrap; }
+.master-table tbody td { padding: 0.75rem 0.5rem; line-height: 1.45; vertical-align: middle; }
+.master-table .badge { font-size: 0.92rem; padding: 0.3em 0.55em; }
+.master-table .btn { min-width: 44px; min-height: 44px; font-size: 1rem; padding: 0.45rem 0.6rem; }
+
+/* Modal master (tambah/edit item) */
+#modalMaster .form-label { font-size: 1.06rem; font-weight: 700; color: #1f2937; }
+#modalMaster .form-control,
+#modalMaster .form-select { font-size: 1.06rem; min-height: 52px; border-width: 1.5px; }
+#modalMaster .modal-title { font-size: 1.25rem; font-weight: 700; }
+#modalMaster .form-text { font-size: 0.95rem; }
+#modalMaster .btn { font-size: 1.02rem; font-weight: 600; min-height: 48px; }

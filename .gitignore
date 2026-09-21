@@ -1,0 +1,44 @@
+# ═══════ SECRET & ENV ═══════
+.env
+.env.*
+!.env.example
+# Konfigurasi deploy lokal (berisi host & path server Anda)
+.deploy.env
+!.deploy.env.example
+
+# ═══════ DOC DEPLOYMENT INTERNAL ═══════
+# Topologi server spesifik (port, path, IP) — tidak untuk repo publik.
+DEPLOYMENT-VPS.md
+DEPLOYMENT-RUMAHWEB.md
+DEPLOYMENT-*.md
+
+# ═══════ Database Lokal ═══════
+database/*.sqlite
+database/*.sqlite-shm
+database/*.sqlite-wal
+
+# ═══════ Log & Storage Runtime ═══════
+storage/
+*.log
+
+# ═══════ Dependensi Vendor ═══════
+# Hanya vendor root (composer) & node_modules yang diabaikan.
+# public/assets/vendor/ WAJIB ter-commit: bootstrap, bootstrap-icons,
+# flatpickr, sweetalert2, apexcharts — asset front-end app.
+/vendor/
+/node_modules/
+
+# ═══════ Sistem & Editor ═══════
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/
+*.tmp
+*~
+
+# ═══════ AI Agent Tooling ═══════
+.agents/
+.opencode/
+.claude/
+_bmad/
