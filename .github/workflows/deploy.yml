@@ -60,14 +60,14 @@ jobs:
           chmod 644 ~/.ssh/known_hosts
 
       # ── Tentukan path tujuan per branch ──────────────────────────────
-      # main     → /var/www/bk-poin-sp      (production)
-      # develop  → /var/www/bk-poin-sp-beta (beta tester)
+      # CATATAN: production (8084) sedang dinonaktifkan sementara.
+      # main & develop keduanya men-target beta (port 8083) yang aktif.
       - name: 🎯 Resolve target path by branch
         id: target
         run: |
           if [ "$GITHUB_REF" = "refs/heads/main" ]; then
-            echo "path=/var/www/bk-poin-sp" >> "$GITHUB_OUTPUT"
-            echo "label=PRODUCTION" >> "$GITHUB_OUTPUT"
+            echo "path=/var/www/bk-poin-sp-beta" >> "$GITHUB_OUTPUT"
+            echo "label=BETA (main→beta, prod 8084 dinonaktifkan sementara)" >> "$GITHUB_OUTPUT"
           else
             echo "path=/var/www/bk-poin-sp-beta" >> "$GITHUB_OUTPUT"
             echo "label=BETA" >> "$GITHUB_OUTPUT"
