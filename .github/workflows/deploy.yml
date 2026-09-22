@@ -139,8 +139,10 @@ jobs:
 
             echo "📁 Set permission storage..."
             mkdir -p storage/logs
-            chmod -R 775 storage
-            chown -R www-data:www-data storage 2>/dev/null || true
+            # storage harus writable oleh www-data (php-fpm) & ubuntu (deploy).
+            # Folder ini dimiliki www-data dari setup awal → butuh sudo.
+            sudo chown -R www-data:www-data storage 2>/dev/null || true
+            sudo chmod -R 775 storage 2>/dev/null || true
 
             if [ ! -f .env ]; then
               echo "⚠️  .env TIDAK ADA di server — deploy akan gagal health check!"
@@ -211,7 +213,7 @@ jobs:
               rm -rf "${DEPLOY_PATH}.broken"
               mv "$DEPLOY_PATH" "${DEPLOY_PATH}.broken"
               mv "${DEPLOY_PATH}.prev" "$DEPLOY_PATH"
-              chown -R www-data:www-data "$DEPLOY_PATH" 2>/dev/null || true
+              sudo chown -R www-data:www-data "$DEPLOY_PATH" 2>/dev/null || true
               echo "✅ Rollback selesai — versi lama dipulihkan"
             else
               echo "⚠️  Tidak ada backup untuk rollback — kode baru tetap di server (investigasi manual!)"
