@@ -17,7 +17,7 @@ VPS_HOST="${VPS_HOST:-}"          # contoh: 103.2xx.1xx.5x atau bk.sekolahanda.s
 VPS_USER="${VPS_USER:-deployer}"  # user SSH (non-root, tapi punya akses folder)
 DEPLOY_PATH="${DEPLOY_PATH:-/var/www/bk-poin-sp}"
 SSH_PORT="${SSH_PORT:-22}"
-SSH_KEY="${SSH_KEY:-$HOME/.ssh/bk_deploy_key}"  # path ke private key lokal
+SSH_KEY="${SSH_KEY:-$HOME/.ssh/deploy_key}"  # path ke private key lokal
 
 # ── FLAG parsing ───────────────────────────────────────────────────────
 RUN_SEED=0

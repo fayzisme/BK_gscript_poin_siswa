@@ -41,12 +41,12 @@ Jalankan perintah ini di komputer lokal (terminal):
 
 ```bash
 # Buat dedicated deploy key baru (ED25519, tanpa passphrase)
-ssh-keygen -t ed25519 -f ~/.ssh/bk_deploy_key -N "" -C "github-actions-deploy@bk-poin-sp"
+ssh-keygen -t ed25519 -f ~/.ssh/deploy_key -N "" -C "github-actions-deploy"
 ```
 
 Perintah ini akan menghasilkan dua file:
-- `~/.ssh/bk_deploy_key` (🔑 **Private Key** — rahasia, akan dimasukkan ke GitHub Secrets).
-- `~/.ssh/bk_deploy_key.pub` (🔓 **Public Key** — akan dipasang di VPS).
+- `~/.ssh/deploy_key` (🔑 **Private Key** — rahasia, akan dimasukkan ke GitHub Secrets).
+- `~/.ssh/deploy_key.pub` (🔓 **Public Key** — akan dipasang di VPS).
 
 ---
 
@@ -56,7 +56,7 @@ Salin isi public key ke server VPS Anda agar GitHub Actions diizinkan masuk:
 
 ```bash
 # Kirim public key ke authorized_keys VPS
-cat ~/.ssh/bk_deploy_key.pub | ssh user@vps-ip 'cat >> ~/.ssh/authorized_keys && echo "✓ Key berhasil ditambahkan"'
+cat ~/.ssh/deploy_key.pub | ssh user@vps-ip 'cat >> ~/.ssh/authorized_keys && echo "✓ Key berhasil ditambahkan"'
 ```
 
 > ⚠️ **Catatan Penting:** Pastikan key ini **tidak** menggunakan `command=` guard di `authorized_keys` (kecuali Anda ingin membatasinya). Workflow rsync dan post-deploy script memerlukan akses shell bebas untuk menjalankan `rsync`, `mkdir`, `chown`, dan `php`.
@@ -67,21 +67,21 @@ cat ~/.ssh/bk_deploy_key.pub | ssh user@vps-ip 'cat >> ~/.ssh/authorized_keys &&
 
 Agar GitHub Actions dapat mengakses VPS Anda dengan aman, daftarkan 3 Secret berikut di repository GitHub Anda:
 
-1. Buka repository Anda di GitHub: **`https://github.com/fayzisme/BK_gscript_poin_siswa`**
+1. Buka repository Anda di GitHub: **`https://github.com/<USERNAME>/<NAMA_REPO>`**
 2. Klik **Settings** ➔ **Secrets and variables** ➔ **Actions**.
 3. Klik **New repository secret** dan tambahkan tiga secret berikut:
 
 | Nama Secret | Nilai / Contoh | Keterangan |
 |---|---|---|
-| `VPS_HOST` | `43.173.7.25` (atau domain Anda) | Alamat IP publik VPS |
-| `VPS_USER` | `ubuntu` (atau user deployer Anda) | User SSH untuk login ke VPS |
-| `VPS_SSH_PRIVATE_KEY` | *(isi seluruh isi file `~/.ssh/bk_deploy_key`)* | Kunci rahasia private key |
+| `VPS_HOST` | `<VPS_IP_ANDA>` (atau domain Anda) | Alamat IP publik VPS |
+| `VPS_USER` | `<VPS_USER_ANDA>` (mis. `deployer`) | User SSH untuk login ke VPS |
+| `VPS_SSH_PRIVATE_KEY` | *(isi seluruh isi file `~/.ssh/deploy_key`)* | Kunci rahasia private key |
 
 Cara cepat via GitHub CLI (opsional):
 ```bash
-gh secret set VPS_HOST --body "43.173.7.25"
-gh secret set VPS_USER --body "ubuntu"
-gh secret set VPS_SSH_PRIVATE_KEY < ~/.ssh/bk_deploy_key
+gh secret set VPS_HOST --body "<VPS_IP_ANDA>"
+gh secret set VPS_USER --body "<VPS_USER_ANDA>"
+gh secret set VPS_SSH_PRIVATE_KEY < ~/.ssh/deploy_key
 ```
 
 ---

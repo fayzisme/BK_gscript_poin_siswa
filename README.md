@@ -38,7 +38,7 @@ yang dapat digunakan oleh sekolah mana pun.
 
 ```bash
 # 1. Clone
-git clone https://github.com/fayzisme/BK_gscript_poin_siswa.git
+git clone https://github.com/<USERNAME>/BK_gscript_poin_siswa.git
 cd BK_gscript_poin_siswa
 
 # 2. Salin konfigurasi (boleh dikosongkan — ada fallback default)

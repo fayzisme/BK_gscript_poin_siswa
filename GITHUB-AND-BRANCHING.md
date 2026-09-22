@@ -51,7 +51,7 @@ Di terminal Mac Anda, jalankan:
 
 ```bash
 # Pastikan Anda di root folder project
-cd /Users/muhammadfaizal/BK_gscript_poin_siswa
+cd /path/ke/BK_gscript_poin_siswa
 
 # 1. Inisialisasi git (jika belum)
 git init
@@ -117,7 +117,7 @@ Setelah PR di-merge ke `develop`, GitHub Actions akan **otomatis deploy** ke ser
 
 ### 🧪 Skenario B: Pengujian Beta Tester
 Berikan link subdomain beta (misal `https://beta-bk.sekolahanda.sch.id`) ke tim Guru BK / Kesiswaan.
-- Data di server beta terpisah dari production (database `bk_man1pati_beta`).
+- Data di server beta terpisah dari production (database `bk_sekolah_beta`).
 - Guru BK bisa menguji tanpa takut merusak data nyata.
 
 ### 🚀 Skenario C: Rilis ke Production
