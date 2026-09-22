@@ -168,7 +168,7 @@ Pastikan:
 3. Password default admin **diganti**
 4. Folder `storage/logs` writable oleh web server
 
-Script deploy otomatis tersedia di `scripts/deploy.sh` (baca `GITHUB-AND-BRANCHING.md`).
+Script deploy otomatis & CI/CD pipeline tersedia (baca **[GITHUB-ACTIONS-CICD.md](GITHUB-ACTIONS-CICD.md)** dan **[DEPLOYMENT-VPS.md](DEPLOYMENT-VPS.md)**).
 
 ---
 
