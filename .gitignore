@@ -17,6 +17,17 @@ database/*.sqlite
 database/*.sqlite-shm
 database/*.sqlite-wal
 
+# ═══════ Database Dumps — DILARANG di repo publik! ═══════
+# File .sql mengekspos nama database, struktur tabel, dan bisa berisi
+# data sekolah asli (NIP, NISN, nama). Lihat aturan Zero Leak di
+# ~/.claude/CLAUDE.md & ~/.config/agent-rules/opencode-core.md
+*.sql
+*.sqlite
+*.sqlite3
+*.db
+*.dump
+*.psql
+
 # ═══════ Log & Storage Runtime ═══════
 storage/
 *.log
